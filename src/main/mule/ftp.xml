@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="9a9d06a6-3664-42d8-8a28-fff8232c8205" >
+		<http:listener-connection host="localhost" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="381358cd-d016-49f7-8921-29c0fee00f69" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Raghava$777" database="myfirstdb" />
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="4f826e43-2298-48bc-b6e9-af73bd6407ef" />
+	<ftp:config name="FTP_Config" doc:name="FTP Config" doc:id="63cc28ee-04a0-4372-9f09-3867a8677a0f" >
+		<ftp:connection host="localhost" />
+	</ftp:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="76cbfd57-0c40-4561-bdb2-a2e784c30f37" >
+		<salesforce:basic-connection username="yathendra.29@gmail.com" password="Raghava$777" securityToken="DOqlsUWnHv7D0seYReycW5N9" />
+	</salesforce:sfdc-config>
+	<flow name="ftpFlow" doc:id="36708a2e-3148-4235-8475-1c7c1fddf53f" >
+		<http:listener doc:name="Listener" doc:id="c7633d36-2c6b-4161-a04b-398696755222" config-ref="HTTP_Listener_config" path="/ftp"/>
+		<db:select doc:name="Select" doc:id="a02b5fa6-3f96-4aa7-a342-5629915082a8" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employeedetails]]></db:sql>
+		</db:select>
+		<choice doc:name="Choice" doc:id="a11e6dfe-e833-4508-85e1-b641053276dd" >
+			<when expression="#[sizeOf(payload) &gt; 0]">
+				<ee:transform doc:name="Transform Message" doc:id="5696e4c5-743c-4015-b406-8eb7a9372548" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<file:write doc:name="Write" doc:id="a8485988-8f91-4e7d-95f9-45f33717c6f6" config-ref="File_Config" path="D:\mule\db1.txt" mode="CREATE_NEW"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="d4cb725c-3c04-494e-800a-0502482d9439" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"data not found"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="ftpFlow1" doc:id="a4ec553c-a25e-49bf-965a-83916be63711" >
+		<http:listener doc:name="Listener" doc:id="bf814db6-ad64-43f2-8240-c3be475dcc55" config-ref="HTTP_Listener_config" path="/read"/>
+		<file:read doc:name="Read" doc:id="6ab352e5-a8ff-453f-ba4b-ea09a5880365" config-ref="File_Config" path="D:\mule\db1.txt"/>
+		<ee:transform doc:name="Transform Message" doc:id="13066411-3e52-42ef-b9a5-9337008c134f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="1272e431-cdce-4aef-8b16-57f6cc7079b0" message="last"/>
+	</flow>
+	<flow name="ftpFlow2" doc:id="04492420-d20e-414d-bac3-544946523494" >
+		<http:listener doc:name="Listener" doc:id="b3acb3fc-5747-4e02-9995-59ea67ae24d4" config-ref="HTTP_Listener_config" path="/sfAccount"/>
+		<salesforce:query doc:name="Query" doc:id="41469c08-d85c-4b4e-ad70-388126d820fe" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[SELECT Name,Phone,Rating,Fax,BillingCity FROM Account]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="038b61f2-e445-4645-82af-5d68bdd5fe79" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="ftpFlow3" doc:id="cec3b8f7-7733-4c71-8a7d-f16209fd18e6" >
+		<http:listener doc:name="Listener" doc:id="7f6999e5-40fe-41a9-af69-5493e6706143" config-ref="HTTP_Listener_config" path="/create"/>
+		<salesforce:create doc:name="Create" doc:id="19a43a11-01a7-44cf-885c-52b9d14f725c" config-ref="Salesforce_Config" type="Account"/>
+		<ee:transform doc:name="Transform Message" doc:id="f239ab49-2998-489e-87ed-001226b316ea">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="ftpFlow4" doc:id="9a9a6e41-51aa-4a00-bc87-a02d4db992d4" >
+		<http:listener doc:name="Listener" doc:id="96d3d7c4-1b9d-46fa-9cbc-f3f04ba34b8f" config-ref="HTTP_Listener_config" path="/upsert"/>
+		<salesforce:upsert objectType="Account" externalIdFieldName="Id" doc:name="Upsert" doc:id="be12246f-1b2d-4b12-92f0-d83d2507bc80" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="e159f449-e350-4748-86fc-d52e39fa1d3f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="ftpFlow5" doc:id="994c8b40-079f-4d34-a5a0-76d392297478" >
+		<http:listener doc:name="Listener" doc:id="5ef5013d-bb78-40d7-9e71-31676f664336" config-ref="HTTP_Listener_config" path="/update"/>
+		<salesforce:update doc:name="Update" doc:id="8469ffeb-fe4f-4c59-b8bd-18629a492c46" config-ref="Salesforce_Config" type="Account"/>
+		<ee:transform doc:name="Transform Message" doc:id="70d0c5b9-dcc5-49a0-8dde-b1efdec3231b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="ftpFlow6" doc:id="e6d984e6-e05d-4889-8ad1-aecaf5422621">
+		<http:listener doc:name="Listener" doc:id="1572ac1d-b05d-4d3b-abb9-854f73f8fffa" config-ref="HTTP_Listener_config" path="/queryAll" />
+		<salesforce:query-all doc:name="Query all" doc:id="c0c6c6b1-3263-4107-94d3-c841c9e99ad8" config-ref="Salesforce_Config" >
+			<salesforce:salesforce-query ><![CDATA[SELECT Name,Phone,Rating,Fax,BillingCity FROM Account]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<ee:transform doc:name="Transform Message" doc:id="214ec2be-5647-4302-82a5-aaec3428bf92">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="creating_and_Naming_a_file_with_TIMESTAMP_Data" doc:id="92a8da3f-6bfc-40da-a06b-e29ce713f673" >
+		<http:listener doc:name="Listener" doc:id="bee4a4b0-e4aa-4a6f-8e27-1cb9f5a4d38a" config-ref="HTTP_Listener_config" path="/timestamp"/>
+		<logger level="INFO" doc:name="Logger" doc:id="a0c1adad-9489-4923-ae83-16d9ae5193c6" message="#[payload]"/>
+		<set-payload value='#[payload ++ {"createdAt":now()}]' doc:name="Set Payload" doc:id="19362edb-859d-4769-8eaa-4f1ef3297b31" />
+		<file:write doc:name="Write" doc:id="82a661a9-0366-4c33-84bd-3d3e0da2760e" config-ref="File_Config" path="#[&quot;StoredAt&quot; ++ now() as String{format:'yyyy-MM-dd-hh-mm-ss'}]"/>
+	</flow>
+	<flow name="ftpFlow7" doc:id="66b7d9e0-b84c-4604-9430-edb67ea973da" >
+		<file:listener doc:name="On New or Updated File" doc:id="21bd4a4a-6013-4e9f-8f08-b94c2441ed4b" config-ref="File_Config" directory="C:\Users\Admin\Documents\mule" moveToDirectory="C:\Users\Admin\Documents\mule\movied from mule" autoDelete="true">
+			<scheduling-strategy >
+				<fixed-frequency frequency="10000"/>
+			</scheduling-strategy>
+		</file:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="1c03db4f-8caf-48c1-99f7-0ab2883e9485" message="#[payload]"/>
+	</flow>
+	<flow name="WaterMark_Enabled_fetches_new_or_modified_files" doc:id="3ac59b60-ad13-42bc-aa3e-33e1f34b230a" >
+		<file:listener doc:name="On New or Updated File" doc:id="8401ec0c-fffa-4676-a093-4b421f9e44d6" config-ref="File_Config" directory="D:\mule\batch" watermarkMode="MODIFIED_TIMESTAMP">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</file:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="a71efc89-f55f-4aff-b73a-92adc42ff4e8" message="#[payload]"/>
+	</flow>
+</mule>
